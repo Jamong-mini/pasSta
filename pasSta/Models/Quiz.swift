@@ -4,5 +4,5 @@ import Foundation
 struct Quiz: Codable {
     let question: String
     let answers: [String]
-    let correctAnswersIndex: Int
+    let correctAnswerIndex: Int
 }
