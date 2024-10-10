@@ -1,0 +1,12 @@
+[
+  {
+    "question": "What are the keywords to create variables?",
+    "answers": ["var", "val", "let", "const"],
+    "correctAnswerIndex": 0
+  },
+  {
+    "question": "What is the keyword to declare constants?",
+    "answers": ["var", "val", "let", "const"],
+    "correctAnswerIndex": 2
+  }
+]
