@@ -8,13 +8,18 @@ class DailyQuizViewController: UIViewController {
     let optionsStackView = QuizUIComponents.createOptionsStackView()
     lazy var submitButton = QuizUIComponents.createSubmitButton(target: self, action: #selector(submitButtonTapped))
     
-    // 퀴즈 로직
+    // 퀴즈 로직 매니저
     var quizLogic = QuizLogicManager()
     
-    var correctAnswerIndex: Int = 0
+    // 퀴즈 데이터 매니저
+    var quizDataManger = QuizDataManager.shared
     
-    // 선택지에 대한 배열 (SwiftData 동적처리 예정)
-    var answers: [String] = ["var", "val", "let", "const"]
+    // 퀴즈 해결 기록 매니저
+    var solvedQuizManager = SolvedQuizManager.shared
+    
+    // 현재 표시할 퀴즈 데이터
+    var currentQuiz: Quiz?
+    var currentQuizIndex: Int = 0 // 현재 퀴즈 인덱스 추적
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -24,6 +29,14 @@ class DailyQuizViewController: UIViewController {
         navigationItem.title = "Daily Quiz"
         
         setupUI()
+        
+        if let quizzes = quizDataManger.loadQuizzesFromJSON(), let firstQuiz = quizzes.first {
+            loadNextQuiz()
+        } else {
+            showAlert(message: "퀴즈 데이터를 불러오지 못했습니다.")
+        }
+        
+        // 퀴즈 데이터를 로드하고 첫 번째 퀴즈를 설정
     }
     
     // UI 배치 함수
@@ -45,18 +58,11 @@ class DailyQuizViewController: UIViewController {
         answerContainerView.addSubview(optionsStackView)
         setupAnswerContainer(answerContainerView)
         
-        // 선택지 버튼들을 스택뷰에 추가
-        for (index, answer) in answers.enumerated() {
-            let button = quizLogic.createCustomRadioButton(title: answer, tag: index, target: self, action: #selector(optionSelected(_:)))
-            optionsStackView.addArrangedSubview(button)
-            quizLogic.optionButtons.append(button)
-        }
         
         // 3. 하단 제출 버튼 부분
         view.addSubview(submitButton)
         setupSubmitButton()
     }
-    
     
     // UI 레이아웃 설정
     private func setupQuestionContainer(_ container: UIView) {
@@ -101,6 +107,29 @@ class DailyQuizViewController: UIViewController {
         ])
     }
     
+    // 퀴즈 데이터를 UI에 적용하는 함수
+    func configureQuiz(quiz: Quiz, index: Int) {
+        currentQuiz = quiz
+        currentQuizIndex = index
+        
+        // 문제 텍스트 설정
+        questionLabel.text = quiz.question
+        
+        // 기준 옵션 버튼을 모두 제거
+        optionsStackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
+        quizLogic.optionButtons.removeAll()
+        
+        // 선택지 버튼들을 스택뷰에 추가
+        for (index, answer) in quiz.answers.enumerated() {
+            let button = quizLogic.createCustomRadioButton(title: answer, tag: index, target: self, action: #selector(optionSelected(_:)))
+            optionsStackView.addArrangedSubview(button)
+            quizLogic.optionButtons.append(button)
+        }
+        
+        // 정답 인덱스 설정
+        quizLogic.correctAnswerIndex = quiz.correctAnswerIndex
+    }
+    
     @objc private func optionSelected(_ sender: UIButton) {
         quizLogic.optionSelected(sender)
         
@@ -120,15 +149,15 @@ class DailyQuizViewController: UIViewController {
         
         let isCorrect = selectedAnswerIndex == quizLogic.correctAnswerIndex
         if isCorrect {
-            print("isCorrect")
-            let alert = UIAlertController(title: "Congratulations 🎉", message: "You got it right!", preferredStyle: .alert)
+            solvedQuizManager.markQuizAsSolved(index: currentQuizIndex)
             
+            let alert = UIAlertController(title: "Congratulations 🎉", message: "You got it right!", preferredStyle: .alert)
             let goHomeAction = UIAlertAction(title: "Go Home", style: .default) { _ in
                 self.navigationController?.popToRootViewController(animated: true)
             }
             
             let nextQuizAction = UIAlertAction(title: "Next Quiz", style: .default) { _ in
-                // 다음 퀴즈 로드 로직
+                self.loadNextQuiz()
             }
             
             alert.addAction(goHomeAction)
@@ -137,6 +166,41 @@ class DailyQuizViewController: UIViewController {
         } else {
             print("incorrect")
             let alert = UIAlertController(title: "Oops!", message: "Wrong answer.", preferredStyle: .alert)
+            alert.addAction(UIAlertAction(title: "OK", style: .default, handler: nil))
+            present(alert, animated: true, completion: nil)
+        }
+    }
+    
+    // 정답 여부에 따른 Alert 표시
+    private func showAlert(message: String, isCorrect: Bool = false) {
+        let alert = UIAlertController(title: isCorrect ? "축하합니다!" : "Oops!", message: message, preferredStyle: .alert)
+        
+        let okAction = UIAlertAction(title: "OK", style: .default) { _ in
+            if isCorrect {
+                self.loadNextQuiz()
+            }
+        }
+        
+        alert.addAction(okAction)
+        present(alert, animated: true, completion: nil)
+    }
+    
+    private func loadNextQuiz() {
+        if let quizzes = quizDataManger.loadQuizzesFromJSON() {
+            // 현재 인덱스에서 다음 퀴즈 찾기
+            while currentQuizIndex < quizzes.count {
+                if !solvedQuizManager.isQuizSolved(index: currentQuizIndex) {
+                    // 푼 문제가 아니면 로드
+                    let nextQuiz = quizzes[currentQuizIndex]
+                    configureQuiz(quiz: nextQuiz, index: currentQuizIndex)
+                    return
+                }
+                
+                currentQuizIndex += 1
+            }
+            
+            // 모든 퀴즈를 다 풀었을 경우 메시지
+            let alert = UIAlertController(title: "All quizzes completed!", message: "You've completed all quizzes.", preferredStyle: .alert)
             alert.addAction(UIAlertAction(title: "OK", style: .default, handler: nil))
             present(alert, animated: true, completion: nil)
         }

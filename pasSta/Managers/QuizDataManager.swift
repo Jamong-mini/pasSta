@@ -3,7 +3,7 @@ import Foundation
 class QuizDataManager {
     
     // 싱글톤 패턴으로 QuizDataManager 공유 인스턴스 생성
-    static let shard = QuizDataManager()
+    static let shared = QuizDataManager()
     
     // JSON 파일에서 퀴즈 데이터를 불러오는 함수
     func loadQuizzesFromJSON() -> [Quiz]? {
