@@ -5,6 +5,7 @@ class DailyQuizViewController: UIViewController {
     // 외부 파일에서 가져온 UI 컴포넌트들 (타이포 수정)
     let questionLabel = QuizUIComponents.createQuestionLabel()
     let pickAnswerLabel = QuizUIComponents.createPickAnswerLabel()
+    let codeBlockLabel = QuizUIComponents.createCodeBlockLabel()
     let optionsStackView = QuizUIComponents.createOptionsStackView()
     lazy var submitButton = QuizUIComponents.createSubmitButton(target: self, action: #selector(submitButtonTapped))
     
@@ -16,6 +17,9 @@ class DailyQuizViewController: UIViewController {
     
     // 퀴즈 해결 기록 매니저
     var solvedQuizManager = SolvedQuizManager.shared
+    
+    // 코드 블록 높이 제약을 관리할 변수
+    var codeBlockLabelHeightConstraint: NSLayoutConstraint?
     
     // 현재 표시할 퀴즈 데이터
     var currentQuiz: Quiz?
@@ -49,6 +53,7 @@ class DailyQuizViewController: UIViewController {
         let questionContainerView = UIView()
         view.addSubview(questionContainerView)
         questionContainerView.addSubview(questionLabel)
+        questionContainerView.addSubview(codeBlockLabel)
         setupQuestionContainer(questionContainerView)
         
         // 2. 중간 선택지 부분
@@ -68,14 +73,30 @@ class DailyQuizViewController: UIViewController {
     private func setupQuestionContainer(_ container: UIView) {
         container.translatesAutoresizingMaskIntoConstraints = false
         questionLabel.translatesAutoresizingMaskIntoConstraints = false
+        codeBlockLabel.translatesAutoresizingMaskIntoConstraints = false
+        
+        // codeBlockLabel의 높이 제약 조건을 저장
+        codeBlockLabelHeightConstraint = codeBlockLabel.heightAnchor.constraint(equalToConstant: 0)
+        
+        
         NSLayoutConstraint.activate([
             container.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
             container.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             container.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+
+            // questionLabel 레이아웃 설정
             questionLabel.topAnchor.constraint(equalTo: container.topAnchor, constant: 40),
-            questionLabel.leadingAnchor.constraint(equalTo: container.leadingAnchor),
-            questionLabel.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-            questionLabel.bottomAnchor.constraint(equalTo: container.bottomAnchor)
+            questionLabel.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 20),
+            questionLabel.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -20),
+
+            // codeBlockLabel 레이아웃 설정
+            codeBlockLabel.topAnchor.constraint(equalTo: questionLabel.bottomAnchor, constant: 20),
+            codeBlockLabel.leadingAnchor.constraint(equalTo: container.leadingAnchor, constant: 20),
+            codeBlockLabel.trailingAnchor.constraint(equalTo: container.trailingAnchor, constant: -20),
+            
+            // codeBlockLabel의 초기 높이 제약
+            codeBlockLabelHeightConstraint!
+
         ])
     }
     
@@ -84,7 +105,7 @@ class DailyQuizViewController: UIViewController {
         pickAnswerLabel.translatesAutoresizingMaskIntoConstraints = false
         optionsStackView.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
-            container.topAnchor.constraint(equalTo: questionLabel.bottomAnchor, constant: 24),
+            container.topAnchor.constraint(equalTo: codeBlockLabel.bottomAnchor, constant: 24),
             container.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
             container.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
             pickAnswerLabel.topAnchor.constraint(equalTo: container.topAnchor),
@@ -114,6 +135,16 @@ class DailyQuizViewController: UIViewController {
         
         // 문제 텍스트 설정
         questionLabel.text = quiz.question
+        
+        // 코드 블록이 있으면 보이게 설정, 없으면 숨김 처리
+        if let code = quiz.code {
+            codeBlockLabel.text = code
+            codeBlockLabel.isHidden = false
+            codeBlockLabelHeightConstraint?.constant = codeBlockLabel.intrinsicContentSize.height  // 코드 블록의 실제 높이 설정
+        } else {
+            codeBlockLabel.isHidden = true
+            codeBlockLabelHeightConstraint?.constant = 0  // 높이 0으로 설정
+        }
         
         // 기준 옵션 버튼을 모두 제거
         optionsStackView.arrangedSubviews.forEach { $0.removeFromSuperview() }
