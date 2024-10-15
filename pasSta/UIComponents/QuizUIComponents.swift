@@ -19,6 +19,19 @@ class QuizUIComponents {
         return label
     }
     
+    // 코드 블록을 표시할 UILabel
+    static func createCodeBlockLabel() -> UILabel {
+        let label = UILabel()
+        label.font = UIFont.monospacedSystemFont(ofSize: 16, weight: .regular)
+        label.numberOfLines = 0
+        label.backgroundColor = UIColor.lightGray.withAlphaComponent(0.2)
+        label.layer.cornerRadius = 8
+        label.layer.masksToBounds = true
+        label.textAlignment = .left
+        label.isHidden = true
+        return label
+    }
+    
     // 선택지를 담을 StackView
     static func createOptionsStackView() -> UIStackView {
         let stackView = UIStackView()
